@@ -15,6 +15,8 @@ CONFIG_PATH = BASE_DIR / "config.json"
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY") or secrets.token_hex(32)
 
+WEEKDAYS = ["星期一", "星期二", "星期三", "星期四", "星期五", "星期六", "星期日"]
+
 
 def load_config():
     with open(CONFIG_PATH, encoding="utf-8") as f:
@@ -49,32 +51,29 @@ def today_str():
     return date.today().isoformat()
 
 
+def today_display():
+    d = date.today()
+    return f"{d.year}年{d.month}月{d.day}日 {WEEKDAYS[d.weekday()]}"
+
+
 def parse_hm(hm: str) -> time:
     h, m = map(int, hm.split(":"))
     return time(h, m)
 
 
 def current_phase(cfg):
+    """planning：白天填计划 | evening：晚上更新完成情况"""
     now = datetime.now().time()
-    morning = parse_hm(cfg["schedule"]["morning_deadline"])
-    noon = parse_hm(cfg["schedule"]["noon_check"])
     evening = parse_hm(cfg["schedule"]["evening_check"])
-
-    if now < morning:
-        return "morning"
-    if now < noon:
-        return "noon"
-    if now < evening:
+    if now >= evening:
         return "evening"
-    return "closed"
+    return "planning"
 
 
 def phase_label(phase):
     return {
-        "morning": "早间 · 填写计划",
-        "noon": "午间 · 确认进度",
-        "evening": "晚间 · 确认进度",
-        "closed": "今日已截止",
+        "planning": "填写今日工作计划",
+        "evening": "更新任务完成情况",
     }.get(phase, phase)
 
 
@@ -92,11 +91,19 @@ def get_tasks(db, plan_id):
     )
 
 
-def completion_rate(tasks, field):
+def completion_rate(tasks, field="evening_done"):
     if not tasks:
         return None
     done = sum(1 for t in tasks if t[field])
     return round(done * 100 / len(tasks))
+
+
+def get_today_members(db, plan_date):
+    rows = db.fetchall(
+        "SELECT DISTINCT member_name FROM daily_plans WHERE plan_date = ? ORDER BY member_name",
+        (plan_date,),
+    )
+    return [r["member_name"] for r in rows]
 
 
 def member_status(db, member_name, plan_date, cfg):
@@ -104,34 +111,27 @@ def member_status(db, member_name, plan_date, cfg):
     phase = current_phase(cfg)
 
     if not plan:
-        missing = "plan" if phase != "morning" else None
         return {
             "member_name": member_name,
             "has_plan": False,
-            "noon_done": False,
             "evening_done": False,
             "tasks": [],
-            "noon_rate": None,
             "evening_rate": None,
-            "missing": missing,
-            "alert": phase != "morning",
+            "missing": "plan" if phase == "evening" else None,
+            "alert": phase == "evening",
         }
 
     tasks = get_tasks(db, plan["id"])
     missing = None
-    if phase in ("evening", "closed") and not plan["noon_submitted_at"]:
-        missing = "noon"
-    if phase == "closed" and not plan["evening_submitted_at"]:
+    if phase == "evening" and not plan["evening_submitted_at"]:
         missing = "evening"
 
     return {
         "member_name": member_name,
         "has_plan": True,
-        "noon_done": bool(plan["noon_submitted_at"]),
         "evening_done": bool(plan["evening_submitted_at"]),
         "tasks": tasks,
-        "noon_rate": completion_rate(tasks, "noon_done"),
-        "evening_rate": completion_rate(tasks, "evening_done"),
+        "evening_rate": completion_rate(tasks),
         "missing": missing,
         "alert": missing is not None,
     }
@@ -145,15 +145,26 @@ def _ensure_db():
 @app.route("/")
 def index():
     cfg = load_config()
-    return render_template("index.html", cfg=cfg)
+    member_name = session.get("member_name")
+    if member_name:
+        return redirect(url_for("member_home"))
+    return render_template(
+        "index.html",
+        cfg=cfg,
+        plan_date=today_str(),
+        date_display=today_display(),
+        error=request.args.get("error"),
+    )
 
 
-@app.route("/select/<member_name>")
-def select_member(member_name):
-    cfg = load_config()
-    if member_name not in cfg["members"]:
-        return redirect(url_for("index"))
-    session["member_name"] = member_name
+@app.route("/join", methods=["POST"])
+def join():
+    name = request.form.get("name", "").strip()
+    if not name:
+        return redirect(url_for("index", error="请输入您的姓名"))
+    if len(name) > 20:
+        return redirect(url_for("index", error="姓名不超过 20 个字"))
+    session["member_name"] = name
     return redirect(url_for("member_home"))
 
 
@@ -179,18 +190,21 @@ def member_home():
         phase=phase,
         phase_label=phase_label(phase),
         plan_date=plan_date,
+        date_display=today_display(),
+        evening_time=cfg["schedule"]["evening_check"],
     )
 
 
 @app.route("/api/plan", methods=["POST"])
 def api_save_plan():
-    cfg = load_config()
     member_name = session.get("member_name")
     if not member_name:
-        return jsonify({"ok": False, "error": "请先选择姓名"}), 401
+        return jsonify({"ok": False, "error": "请先输入姓名"}), 401
 
-    if current_phase(cfg) != "morning":
-        return jsonify({"ok": False, "error": "已过早间填写时间（09:00 前）"}), 400
+    if current_phase(load_config()) == "evening" and get_plan(get_db(), member_name, today_str()):
+        existing = get_plan(get_db(), member_name, today_str())
+        if existing and existing.get("evening_submitted_at"):
+            return jsonify({"ok": False, "error": "晚间确认已提交，无法修改计划"}), 400
 
     data = request.get_json(force=True)
     items = [t.strip() for t in data.get("tasks", []) if t and t.strip()]
@@ -205,10 +219,11 @@ def api_save_plan():
     if existing:
         db.run("DELETE FROM tasks WHERE plan_id = ?", (existing["id"],))
         plan_id = existing["id"]
-        db.run(
-            "UPDATE daily_plans SET created_at = ?, noon_submitted_at = NULL, evening_submitted_at = NULL WHERE id = ?",
-            (now, plan_id),
-        )
+        if not existing.get("evening_submitted_at"):
+            db.run(
+                "UPDATE daily_plans SET created_at = ? WHERE id = ?",
+                (now, plan_id),
+            )
     else:
         db.run(
             "INSERT INTO daily_plans (member_name, plan_date, created_at) VALUES (?, ?, ?)",
@@ -234,30 +249,27 @@ def api_checkin():
     cfg = load_config()
     member_name = session.get("member_name")
     if not member_name:
-        return jsonify({"ok": False, "error": "请先选择姓名"}), 401
+        return jsonify({"ok": False, "error": "请先输入姓名"}), 401
 
-    phase = current_phase(cfg)
-    if phase not in ("noon", "evening"):
-        return jsonify({"ok": False, "error": "当前不在确认时段"}), 400
+    if current_phase(cfg) != "evening":
+        return jsonify({"ok": False, "error": f"请在 {cfg['schedule']['evening_check']} 后再更新完成情况"}), 400
 
     data = request.get_json(force=True)
     task_status = data.get("tasks", {})
-    check_field = "noon_done" if phase == "noon" else "evening_done"
-    time_field = "noon_submitted_at" if phase == "noon" else "evening_submitted_at"
 
     db = get_db()
     plan_date = today_str()
     plan = get_plan(db, member_name, plan_date)
     if not plan:
-        return jsonify({"ok": False, "error": "请先填写今日计划"}), 400
+        return jsonify({"ok": False, "error": "请先填写今日工作计划"}), 400
 
     tasks = get_tasks(db, plan["id"])
     for t in tasks:
         done = 1 if task_status.get(str(t["id"]), False) else 0
-        db.run(f"UPDATE tasks SET {check_field} = ? WHERE id = ?", (done, t["id"]))
+        db.run("UPDATE tasks SET evening_done = ? WHERE id = ?", (done, t["id"]))
 
     db.run(
-        f"UPDATE daily_plans SET {time_field} = ? WHERE id = ?",
+        "UPDATE daily_plans SET evening_submitted_at = ? WHERE id = ?",
         (datetime.now().isoformat(timespec="seconds"), plan["id"]),
     )
     g._db_conn.commit()
@@ -289,9 +301,9 @@ def manager_dashboard():
     plan_date = today_str()
     phase = current_phase(cfg)
 
-    statuses = [member_status(db, m, plan_date, cfg) for m in cfg["members"]]
-    submitted = sum(1 for s in statuses if s["has_plan"])
-    noon_ok = sum(1 for s in statuses if s["noon_done"])
+    members = get_today_members(db, plan_date)
+    statuses = [member_status(db, m, plan_date, cfg) for m in members]
+    submitted = len([s for s in statuses if s["has_plan"]])
     evening_ok = sum(1 for s in statuses if s["evening_done"])
     alerts = [s for s in statuses if s["alert"]]
 
@@ -299,14 +311,14 @@ def manager_dashboard():
         "manager.html",
         cfg=cfg,
         plan_date=plan_date,
+        date_display=today_display(),
         phase=phase,
         phase_label=phase_label(phase),
         statuses=statuses,
         submitted=submitted,
-        total=len(cfg["members"]),
-        noon_ok=noon_ok,
         evening_ok=evening_ok,
         alerts=alerts,
+        evening_time=cfg["schedule"]["evening_check"],
     )
 
 
@@ -323,13 +335,12 @@ def manager_history():
         f"""
         SELECT dp.plan_date, dp.member_name,
                COUNT(t.id) AS task_count,
-               SUM(t.noon_done) AS noon_done,
                SUM(t.evening_done) AS evening_done,
-               dp.noon_submitted_at, dp.evening_submitted_at
+               dp.evening_submitted_at
         FROM daily_plans dp
         LEFT JOIN tasks t ON t.plan_id = dp.id
         WHERE {date_filter}
-        GROUP BY dp.plan_date, dp.member_name, dp.noon_submitted_at, dp.evening_submitted_at
+        GROUP BY dp.plan_date, dp.member_name, dp.evening_submitted_at
         ORDER BY dp.plan_date DESC, dp.member_name
         """
     )
@@ -345,9 +356,7 @@ def manager_history():
             {
                 "name": r["member_name"],
                 "tasks": tc,
-                "noon_rate": round((r["noon_done"] or 0) * 100 / tc) if tc else 0,
                 "evening_rate": er,
-                "noon_ok": bool(r["noon_submitted_at"]),
                 "evening_ok": bool(r["evening_submitted_at"]),
             }
         )
@@ -362,7 +371,6 @@ def manager_history():
             {
                 "date": item["date"],
                 "plan_count": item["plan_count"],
-                "total_members": len(cfg["members"]),
                 "avg_evening": avg,
                 "members": item["members"],
             }

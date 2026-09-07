@@ -154,12 +154,43 @@
     }
     .phase-bar .time { font-size: 13px; opacity: .85; }
     .phase-bar .label { font-size: 18px; font-weight: 700; margin-top: 4px; }
+    .date-hero {
+      background: linear-gradient(135deg, #2563eb, #7c3aed);
+      color: #fff;
+      border-radius: var(--radius);
+      padding: 20px 16px;
+      text-align: center;
+      margin-bottom: 12px;
+      box-shadow: var(--shadow);
+    }
+    .date-hero.compact { padding: 14px 16px; }
+    .date-hero .date-label { font-size: 13px; opacity: .85; }
+    .date-hero .date-value { font-size: 22px; font-weight: 700; margin-top: 4px; }
+    .field-label {
+      display: block;
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: var(--text);
+    }
+    .name-input {
+      width: 100%;
+      padding: 14px;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius);
+      font-size: 16px;
+      outline: none;
+    }
+    .name-input:focus { border-color: var(--primary); }
+    .task-summary { font-size: 14px; padding-left: 18px; color: var(--text); }
+    .task-summary li { margin-bottom: 6px; }
     .stat-row {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
       gap: 8px;
       margin-bottom: 12px;
     }
+    .stat-row.two-col { grid-template-columns: 1fr 1fr; }
     .stat-box {
       background: var(--card);
       border-radius: var(--radius);

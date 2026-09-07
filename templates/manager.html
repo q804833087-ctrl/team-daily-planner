@@ -6,28 +6,29 @@
   <a href="{{ url_for('logout') }}">退出</a>
 </div>
 
+<div class="date-hero compact">
+  <div class="date-label">今日</div>
+  <div class="date-value">{{ date_display }}</div>
+</div>
+
 <div class="phase-bar">
-  <div class="time">{{ plan_date }} · {{ phase_label }}</div>
   <div class="label">{{ cfg.team_name }}</div>
+  <div class="time">{{ phase_label }}</div>
 </div>
 
 <div class="nav-tabs">
   <a href="{{ url_for('manager_dashboard') }}" class="active">今日概览</a>
-  <a href="{{ url_for('manager_history') }}">历史趋势</a>
+  <a href="{{ url_for('manager_history') }}">历史记录</a>
 </div>
 
-<div class="stat-row">
-  <div class="stat-box {% if submitted < total %}alert{% endif %}">
-    <div class="num">{{ submitted }}/{{ total }}</div>
+<div class="stat-row two-col">
+  <div class="stat-box">
+    <div class="num">{{ submitted }}</div>
     <div class="lbl">已填计划</div>
   </div>
-  <div class="stat-box {% if noon_ok < submitted %}alert{% endif %}">
-    <div class="num">{{ noon_ok }}/{{ total }}</div>
-    <div class="lbl">午间确认</div>
-  </div>
-  <div class="stat-box {% if evening_ok < submitted %}alert{% endif %}">
-    <div class="num">{{ evening_ok }}/{{ total }}</div>
-    <div class="lbl">晚间确认</div>
+  <div class="stat-box {% if submitted > 0 and evening_ok < submitted %}alert{% endif %}">
+    <div class="num">{{ evening_ok }}/{{ submitted }}</div>
+    <div class="lbl">晚间已更新</div>
   </div>
 </div>
 
@@ -38,8 +39,7 @@
   <div style="font-size:14px;margin-bottom:4px">
     <strong>{{ s.member_name }}</strong> —
     {% if not s.has_plan %}未填计划
-    {% elif s.missing == 'noon' %}未做午间确认
-    {% elif s.missing == 'evening' %}未做晚间确认
+    {% elif s.missing == 'evening' %}未更新完成情况
     {% endif %}
   </div>
   {% endfor %}
@@ -47,7 +47,8 @@
 {% endif %}
 
 <div class="card">
-  <div class="card-title">全员明细</div>
+  <div class="card-title">今日全员明细</div>
+  {% if statuses %}
   {% for s in statuses %}
   <div class="member-row {% if s.alert %}alert{% endif %}">
     <div class="top">
@@ -58,15 +59,10 @@
         {% else %}
           <span class="badge badge-red">未填</span>
         {% endif %}
-        {% if s.noon_done %}
-          <span class="badge badge-orange">午✓</span>
-        {% elif s.has_plan %}
-          <span class="badge badge-gray">午待</span>
-        {% endif %}
         {% if s.evening_done %}
-          <span class="badge badge-green">晚✓</span>
-        {% elif s.has_plan %}
-          <span class="badge badge-gray">晚待</span>
+          <span class="badge badge-green">完成✓</span>
+        {% elif s.has_plan and phase == 'evening' %}
+          <span class="badge badge-gray">待更新</span>
         {% endif %}
       </div>
     </div>
@@ -75,21 +71,19 @@
       {% for t in s.tasks %}
       <li>
         {{ t.content }}
-        {% if t.noon_done %}<span style="color:var(--warning)">[午✓]</span>{% endif %}
-        {% if t.evening_done %}<span style="color:var(--success)">[晚✓]</span>{% endif %}
+        {% if t.evening_done %}<span style="color:var(--success)">[已完成]</span>{% else %}<span style="color:var(--muted)">[未完成]</span>{% endif %}
       </li>
       {% endfor %}
     </ul>
     {% if s.evening_rate is not none %}
-    <div style="font-size:12px;color:var(--muted);margin-top:6px">
-      晚间完成率 {{ s.evening_rate }}%
-    </div>
+    <div style="font-size:12px;color:var(--muted);margin-top:6px">完成率 {{ s.evening_rate }}%</div>
     <div class="progress-bar"><div class="fill" style="width:{{ s.evening_rate }}%"></div></div>
     {% endif %}
-    {% elif not s.has_plan %}
-    <div class="tasks">暂无任务</div>
     {% endif %}
   </div>
   {% endfor %}
+  {% else %}
+  <div class="empty">今日暂无人填写计划</div>
+  {% endif %}
 </div>
 {% endblock %}

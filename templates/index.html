@@ -1,27 +1,34 @@
 {% extends "base.html" %}
-{% block title %}选择姓名 — 团队日计划{% endblock %}
+{% block title %}团队日计划{% endblock %}
 {% block content %}
-<div class="header">
+<div class="date-hero">
+  <div class="date-label">今日</div>
+  <div class="date-value">{{ date_display }}</div>
+</div>
+
+<div class="header" style="padding-top:8px">
   <h1>{{ cfg.team_name }}</h1>
-  <p>团队日计划 · 请选择你的姓名</p>
+  <p>输入姓名，填写今日工作计划</p>
 </div>
 
 <div class="card">
-  <div class="card-title">
-    今日流程
-    <span class="badge badge-blue">09:00 计划</span>
-    <span class="badge badge-orange">12:00 确认</span>
-    <span class="badge badge-green">18:00 确认</span>
-  </div>
-  <p style="font-size:14px;color:var(--muted);line-height:1.7">
-    早上填写今日工作计划，中午和晚上分别确认任务完成情况。管理者可在看板查看全员进度。
-  </p>
+  <form method="post" action="{{ url_for('join') }}">
+    <label class="field-label" for="name">您的姓名</label>
+    <input type="text" id="name" name="name" class="name-input" placeholder="请输入您的姓名" maxlength="20" autofocus required>
+    {% if error %}
+    <div class="error-msg">{{ error }}</div>
+    {% endif %}
+    <button type="submit" class="btn btn-primary" style="margin-top:16px">进入 · 填写今日计划</button>
+  </form>
 </div>
 
-<div class="member-grid">
-  {% for name in cfg.members %}
-  <a href="{{ url_for('select_member', member_name=name) }}" class="member-btn">{{ name }}</a>
-  {% endfor %}
+<div class="card" style="background:#f8fafc">
+  <p style="font-size:14px;color:var(--muted);line-height:1.8">
+    <strong style="color:var(--text)">使用说明</strong><br>
+    ① 白天：填写今日要做的工作任务<br>
+    ② 晚上：勾选每项任务的完成情况<br>
+    ③ 管理者可在看板查看全员进度
+  </p>
 </div>
 
 <div class="footer-link">

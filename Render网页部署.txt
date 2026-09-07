@@ -1,0 +1,18 @@
+Render 网页部署（不用验证码，3 步）
+================================
+
+1. 浏览器打开：https://dashboard.render.com/select-repo?type=blueprint
+   → 用 GitHub 登录（和之前一样）
+
+2. 找到仓库 team-daily-planner → 点 Connect
+
+3. 点 Deploy Blueprint → 等 3~5 分钟
+
+完成后会显示网址，类似：
+https://team-daily-planner.onrender.com
+
+---
+
+现在临时可用（不用等 Render）：
+https://critical-cruise-bird-surf.trycloudflare.com
+管理者 PIN：8888

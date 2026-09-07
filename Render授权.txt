@@ -1,0 +1,7 @@
+【第1步】Render 授权（浏览器应已打开）
+验证码：7I4T-BRVO-X7LS-29AU
+链接：https://dashboard.render.com/device-authorization/7I4T-BRVO-X7LS-29AU
+→ 点 Authorize 授权
+
+【第2步】授权完成后告诉我「好了」
+我会自动完成云部署，给你固定网址

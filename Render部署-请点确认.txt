@@ -1,0 +1,19 @@
+Render 云部署（请现在操作，约 1 分钟）
+====================================
+
+浏览器应已打开 Render 部署页。
+若未打开，请访问：
+https://render.com/deploy?repo=https://github.com/q804833087-ctrl/team-daily-planner
+
+操作步骤：
+1. 点 Sign In → 选 GitHub 登录（和刚才一样授权即可）
+2. 看到 Blueprint 预览页 → 点「Apply」或「Create」
+3. 等待 3~5 分钟部署完成
+4. 完成后页面会显示网址，类似：
+   https://team-daily-planner-xxxx.onrender.com
+
+把这个网址发到微信群，大家收藏即可长期使用！
+
+管理者 PIN：8888
+
+完成后告诉我「部署好了」，我帮你验证是否正常。
