@@ -1,5 +1,4 @@
-# Render Blueprint — 一键部署
-# 数据库请用 Neon（免费永久），在 Render 环境变量填入 DATABASE_URL
+# Render Blueprint — 一键部署（含免费数据库）
 services:
   - type: web
     name: team-daily-planner
@@ -14,4 +13,12 @@ services:
       - key: SECRET_KEY
         generateValue: true
       - key: DATABASE_URL
-        sync: false
+        fromDatabase:
+          name: team-daily-db
+          property: connectionString
+
+databases:
+  - name: team-daily-db
+    plan: free
+    databaseName: team_daily
+    user: team_daily
