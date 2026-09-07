@@ -281,7 +281,7 @@ def _verify_task_owner(db, task_id, member_name):
     plan = get_plan(db, member_name, today_str())
     if not plan or task["plan_id"] != plan["id"]:
         return None, (jsonify({"ok": False, "error": "无权操作"}), 403)
-    return task, plan
+    return task, None
 
 
 @app.route("/")
