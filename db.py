@@ -143,7 +143,8 @@ def init_schema(conn):
                 task_id INTEGER NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
                 stored_name TEXT NOT NULL,
                 original_name TEXT NOT NULL,
-                created_at TEXT NOT NULL
+                created_at TEXT NOT NULL,
+                file_data BYTEA
             )
             """
         )
@@ -183,6 +184,7 @@ def init_schema(conn):
                 stored_name TEXT NOT NULL,
                 original_name TEXT NOT NULL,
                 created_at TEXT NOT NULL,
+                file_data BLOB,
                 FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE
             )
             """

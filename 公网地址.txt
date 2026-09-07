@@ -1,4 +1,24 @@
-https://critical-cruise-bird-surf.trycloudflare.com
+团队日计划 - 访问地址
+====================
+
+✅ 数据永久保存在本机：
+   c:\Users\Administrator\Desktop\9月方案\团队日计划\data\planner.db
+   （计划、进度、截图全部入库，重启不丢失）
+
+局域网访问（同办公室 / 同 WiFi）：
+   http://192.168.110.87:5000
+
+公网访问（微信远程，需本机开机）：
+   双击运行「一键启动-长期运行.bat」获取链接
+   或运行「启动公网访问.bat」
 
 管理者 PIN：8888
-（电脑需保持开机）
+
+────────────────────────
+可选：云端永久地址（不用本机开机）
+────────────────────────
+1. https://console.neon.tech/signup  注册 → 复制 DATABASE_URL
+2. https://render.com/deploy?repo=https://github.com/q804833087-ctrl/team-daily-planner
+   登录 → Apply → 填入 DATABASE_URL → 获得固定网址
+
+云端数据同样永久保存（Neon 数据库 + 截图存库）。

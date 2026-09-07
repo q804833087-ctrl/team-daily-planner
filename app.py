@@ -1,12 +1,13 @@
 """团队日计划 — 轻量 Web 应用"""
 import json
+import mimetypes
 import os
 import secrets
 import uuid
 from datetime import date, datetime
 from pathlib import Path
 
-from flask import Flask, abort, g, jsonify, redirect, render_template, request, send_from_directory, session, url_for
+from flask import Flask, Response, abort, g, jsonify, redirect, render_template, request, send_from_directory, session, url_for
 from werkzeug.utils import secure_filename
 
 from db import DB, init_schema, open_connection, use_postgres
@@ -89,10 +90,14 @@ def close_db(exc):
 def _migrate_schema(db):
     if use_postgres():
         db.run("ALTER TABLE tasks ADD COLUMN IF NOT EXISTS updated_at TEXT")
+        db.run("ALTER TABLE task_attachments ADD COLUMN IF NOT EXISTS file_data BYTEA")
     else:
         cols = {r[1] for r in db.conn.execute("PRAGMA table_info(tasks)").fetchall()}
         if "updated_at" not in cols:
             db.run("ALTER TABLE tasks ADD COLUMN updated_at TEXT")
+        att_cols = {r[1] for r in db.conn.execute("PRAGMA table_info(task_attachments)").fetchall()}
+        if "file_data" not in att_cols:
+            db.run("ALTER TABLE task_attachments ADD COLUMN file_data BLOB")
 
 
 def ensure_schema():
@@ -257,10 +262,15 @@ def save_attachment(db, task_id, file_storage):
     if len(data) > MAX_FILE_SIZE:
         raise ValueError("单张图片不超过 5MB")
     stored = f"{uuid.uuid4().hex}{ext}"
-    (UPLOAD_DIR / stored).write_bytes(data)
     db.run(
-        "INSERT INTO task_attachments (task_id, stored_name, original_name, created_at) VALUES (?, ?, ?, ?)",
-        (task_id, stored, secure_filename(file_storage.filename or stored), datetime.now().isoformat(timespec="seconds")),
+        "INSERT INTO task_attachments (task_id, stored_name, original_name, created_at, file_data) VALUES (?, ?, ?, ?, ?)",
+        (
+            task_id,
+            stored,
+            secure_filename(file_storage.filename or stored),
+            datetime.now().isoformat(timespec="seconds"),
+            data,
+        ),
     )
 
 
@@ -392,7 +402,20 @@ def serve_upload(filename):
         abort(404)
     if not (session.get("member_name") or session.get("manager")):
         abort(403)
-    return send_from_directory(UPLOAD_DIR, filename)
+    db = get_db()
+    att = db.fetchone("SELECT * FROM task_attachments WHERE stored_name = ?", (filename,))
+    if not att:
+        abort(404)
+    data = att.get("file_data")
+    if data is None:
+        path = UPLOAD_DIR / filename
+        if path.exists():
+            return send_from_directory(UPLOAD_DIR, filename)
+        abort(404)
+    if isinstance(data, memoryview):
+        data = data.tobytes()
+    mime = mimetypes.guess_type(filename)[0] or "application/octet-stream"
+    return Response(data, mimetype=mime)
 
 
 @app.route("/manager")
