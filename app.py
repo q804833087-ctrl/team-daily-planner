@@ -7,7 +7,7 @@ from pathlib import Path
 
 from flask import Flask, g, jsonify, redirect, render_template, request, session, url_for
 
-from db import DB, get_connection, history_date_filter, init_schema, use_postgres
+from db import DB, history_date_filter, init_schema, open_connection, use_postgres
 
 BASE_DIR = Path(__file__).parent
 CONFIG_PATH = BASE_DIR / "config.json"
@@ -25,26 +25,37 @@ def load_config():
 
 def get_db():
     if "db" not in g:
-        g._db_conn = get_connection().__enter__()
+        g._db_conn = open_connection()
         g.db = DB(g._db_conn)
     return g.db
 
 
 @app.teardown_appcontext
-def close_db(_exc):
+def close_db(exc):
     conn = g.pop("_db_conn", None)
     g.pop("db", None)
     if conn is not None:
         try:
-            conn.commit()
+            if exc is None:
+                conn.commit()
+            else:
+                conn.rollback()
         except Exception:
-            conn.rollback()
+            pass
+        finally:
+            conn.close()
+
+
+def ensure_schema():
+    conn = open_connection()
+    try:
+        init_schema(conn)
+        conn.commit()
+    finally:
         conn.close()
 
 
-def init_db():
-    with get_connection() as conn:
-        init_schema(conn)
+ensure_schema()
 
 
 def today_str():
@@ -136,10 +147,6 @@ def member_status(db, member_name, plan_date, cfg):
         "alert": missing is not None,
     }
 
-
-@app.before_request
-def _ensure_db():
-    init_db()
 
 
 @app.route("/")

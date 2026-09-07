@@ -32,9 +32,14 @@ def _sqlite_conn():
     return conn
 
 
+def open_connection():
+    """打开连接，调用方负责 commit/close"""
+    return _pg_conn() if use_postgres() else _sqlite_conn()
+
+
 @contextmanager
 def get_connection():
-    conn = _pg_conn() if use_postgres() else _sqlite_conn()
+    conn = open_connection()
     try:
         yield conn
         conn.commit()
