@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+{% block title %}{{ member_name }} — 团队日计划{% endblock %}
+{% block content %}
+<div class="top-bar">
+  <span>{{ member_name }}</span>
+  <a href="{{ url_for('logout') }}">切换身份</a>
+</div>
+
+<div class="phase-bar">
+  <div class="time">{{ plan_date }} · 当前时段</div>
+  <div class="label">{{ phase_label }}</div>
+</div>
+
+{% if phase == 'morning' %}
+<!-- 早间：填写计划 -->
+<div class="card">
+  <div class="card-title">📝 今日工作计划</div>
+  <p style="font-size:13px;color:var(--muted);margin-bottom:12px">请在 09:00 前填写，可添加多条任务</p>
+  <div id="task-list">
+    {% if tasks %}
+      {% for t in tasks %}
+      <div class="task-input-row">
+        <input type="text" value="{{ t.content }}" placeholder="输入任务内容…">
+        <button class="remove-btn" onclick="this.parentElement.remove()">×</button>
+      </div>
+      {% endfor %}
+    {% else %}
+      <div class="task-input-row">
+        <input type="text" placeholder="输入任务内容…">
+        <button class="remove-btn" onclick="this.parentElement.remove()">×</button>
+      </div>
+    {% endif %}
+  </div>
+  <button class="btn btn-outline btn-sm" style="margin-bottom:12px" onclick="addTask()">+ 添加任务</button>
+  <button class="btn btn-primary" onclick="savePlan()">提交今日计划</button>
+</div>
+
+{% elif phase in ('noon', 'evening') and plan %}
+<!-- 午间/晚间：确认完成 -->
+<div class="card">
+  <div class="card-title">
+    {% if phase == 'noon' %}☀️ 午间确认{% else %}🌙 晚间确认{% endif %}
+  </div>
+  <p style="font-size:13px;color:var(--muted);margin-bottom:12px">勾选已完成的任务</p>
+  <div id="check-list">
+    {% for t in tasks %}
+    <label class="task-check {% if (phase == 'noon' and t.noon_done) or (phase == 'evening' and t.evening_done) %}checked{% endif %}" data-id="{{ t.id }}">
+      <input type="checkbox"
+        {% if phase == 'noon' and t.noon_done %}checked{% endif %}
+        {% if phase == 'evening' and t.evening_done %}checked{% endif %}
+        onchange="this.closest('.task-check').classList.toggle('checked', this.checked)">
+      <div>
+        <div class="content">{{ t.content }}</div>
+        {% if phase == 'evening' and t.noon_done %}
+        <div class="sub">午间已完成 ✓</div>
+        {% endif %}
+      </div>
+    </label>
+    {% endfor %}
+  </div>
+  <button class="btn btn-primary" style="margin-top:12px" onclick="submitCheckin()">
+    提交{% if phase == 'noon' %}午间{% else %}晚间{% endif %}确认
+  </button>
+</div>
+
+{% elif plan %}
+<!-- 已提交，等待下一时段 -->
+<div class="card">
+  <div class="card-title">✅ 今日计划已提交</div>
+  <ul style="font-size:14px;padding-left:18px;color:var(--text)">
+    {% for t in tasks %}
+    <li style="margin-bottom:6px">
+      {{ t.content }}
+      {% if t.noon_done %}<span class="badge badge-orange">午✓</span>{% endif %}
+      {% if t.evening_done %}<span class="badge badge-green">晚✓</span>{% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+  {% if plan.noon_submitted_at and not plan.evening_submitted_at and phase == 'evening' %}
+  <p style="font-size:13px;color:var(--warning);margin-top:12px">午间已确认，请在 18:00 前完成晚间确认</p>
+  {% elif phase == 'closed' %}
+  <p style="font-size:13px;color:var(--muted);margin-top:12px">今日已全部确认完毕</p>
+  {% else %}
+  <p style="font-size:13px;color:var(--muted);margin-top:12px">等待下一确认时段…</p>
+  {% endif %}
+</div>
+
+{% else %}
+<!-- 错过早间 -->
+<div class="card">
+  <div class="empty">
+    <p style="font-size:16px;margin-bottom:8px">⚠️ 未填写今日计划</p>
+    <p>早间填写时间（09:00 前）已过，请联系管理者或在明日尽早填写。</p>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+function addTask() {
+  const div = document.createElement('div');
+  div.className = 'task-input-row';
+  div.innerHTML = '<input type="text" placeholder="输入任务内容…"><button class="remove-btn" onclick="this.parentElement.remove()">×</button>';
+  document.getElementById('task-list').appendChild(div);
+  div.querySelector('input').focus();
+}
+
+async function savePlan() {
+  const inputs = document.querySelectorAll('#task-list input');
+  const tasks = Array.from(inputs).map(i => i.value.trim()).filter(Boolean);
+  if (!tasks.length) { showToast('请至少填写一条任务'); return; }
+  const res = await fetch('/api/plan', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({tasks})
+  });
+  const data = await res.json();
+  if (data.ok) { showToast('计划已提交'); setTimeout(() => location.reload(), 800); }
+  else showToast(data.error || '提交失败');
+}
+
+async function submitCheckin() {
+  const checks = document.querySelectorAll('#check-list .task-check');
+  const tasks = {};
+  checks.forEach(el => {
+    tasks[el.dataset.id] = el.querySelector('input').checked;
+  });
+  const res = await fetch('/api/checkin', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({tasks})
+  });
+  const data = await res.json();
+  if (data.ok) { showToast('确认已提交'); setTimeout(() => location.reload(), 800); }
+  else showToast(data.error || '提交失败');
+}
+</script>
+{% endblock %}

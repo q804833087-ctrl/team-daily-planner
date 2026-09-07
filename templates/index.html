@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}选择姓名 — 团队日计划{% endblock %}
+{% block content %}
+<div class="header">
+  <h1>{{ cfg.team_name }}</h1>
+  <p>团队日计划 · 请选择你的姓名</p>
+</div>
+
+<div class="card">
+  <div class="card-title">
+    今日流程
+    <span class="badge badge-blue">09:00 计划</span>
+    <span class="badge badge-orange">12:00 确认</span>
+    <span class="badge badge-green">18:00 确认</span>
+  </div>
+  <p style="font-size:14px;color:var(--muted);line-height:1.7">
+    早上填写今日工作计划，中午和晚上分别确认任务完成情况。管理者可在看板查看全员进度。
+  </p>
+</div>
+
+<div class="member-grid">
+  {% for name in cfg.members %}
+  <a href="{{ url_for('select_member', member_name=name) }}" class="member-btn">{{ name }}</a>
+  {% endfor %}
+</div>
+
+<div class="footer-link">
+  <a href="{{ url_for('manager_login') }}">管理者入口 →</a>
+</div>
+{% endblock %}

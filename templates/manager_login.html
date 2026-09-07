@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}管理者登录{% endblock %}
+{% block content %}
+<div class="header">
+  <h1>管理者入口</h1>
+  <p>输入 PIN 码查看看板</p>
+</div>
+
+<div class="card">
+  <form method="post" action="{{ url_for('manager_auth') }}">
+    <input type="password" name="pin" class="pin-input" placeholder="PIN" maxlength="8" autofocus required>
+    {% if error %}<div class="error-msg">{{ error }}</div>{% endif %}
+    <button type="submit" class="btn btn-primary" style="margin-top:16px">进入看板</button>
+  </form>
+</div>
+
+<div class="footer-link">
+  <a href="{{ url_for('index') }}">← 返回首页</a>
+</div>
+{% endblock %}

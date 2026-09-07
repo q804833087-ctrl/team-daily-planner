@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}历史趋势{% endblock %}
+{% block content %}
+<div class="top-bar">
+  <span>历史趋势</span>
+  <a href="{{ url_for('logout') }}">退出</a>
+</div>
+
+<div class="nav-tabs">
+  <a href="{{ url_for('manager_dashboard') }}">今日概览</a>
+  <a href="{{ url_for('manager_history') }}" class="active">历史趋势</a>
+</div>
+
+<div class="card">
+  <div class="card-title">近 {{ days }} 天数据</div>
+  <div style="display:flex;gap:8px;margin-bottom:12px">
+    <a href="?days=7" class="btn btn-outline btn-sm">7天</a>
+    <a href="?days=14" class="btn btn-outline btn-sm">14天</a>
+    <a href="?days=30" class="btn btn-outline btn-sm">30天</a>
+  </div>
+</div>
+
+{% if history %}
+{% for day in history %}
+<div class="history-day">
+  <div class="day-head">
+    <span>{{ day.date }}</span>
+    <span>{{ day.plan_count }}/{{ day.total_members }} 人填计划 · 平均完成 {{ day.avg_evening }}%</span>
+  </div>
+  {% for m in day.members %}
+  <div class="member-row">
+    <div class="top">
+      <span class="name">{{ m.name }}</span>
+      <div class="tags">
+        <span class="badge badge-blue">{{ m.tasks }} 项</span>
+        <span class="badge badge-orange">午 {{ m.noon_rate }}%</span>
+        <span class="badge badge-green">晚 {{ m.evening_rate }}%</span>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endfor %}
+{% else %}
+<div class="card"><div class="empty">暂无历史数据</div></div>
+{% endif %}
+{% endblock %}

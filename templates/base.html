@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>{% block title %}团队日计划{% endblock %}</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #f0f4f8;
+      --card: #ffffff;
+      --primary: #2563eb;
+      --primary-dark: #1d4ed8;
+      --success: #16a34a;
+      --warning: #ea580c;
+      --danger: #dc2626;
+      --text: #1e293b;
+      --muted: #64748b;
+      --border: #e2e8f0;
+      --radius: 12px;
+      --shadow: 0 2px 12px rgba(15, 23, 42, 0.08);
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      line-height: 1.5;
+    }
+    .wrap { max-width: 480px; margin: 0 auto; padding: 16px 16px 32px; }
+    .header {
+      text-align: center;
+      padding: 24px 0 16px;
+    }
+    .header h1 { font-size: 22px; font-weight: 700; }
+    .header p { color: var(--muted); font-size: 14px; margin-top: 4px; }
+    .card {
+      background: var(--card);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 16px;
+      margin-bottom: 12px;
+    }
+    .card-title {
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .badge {
+      display: inline-block;
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 20px;
+      font-weight: 600;
+    }
+    .badge-blue { background: #dbeafe; color: #1d4ed8; }
+    .badge-green { background: #dcfce7; color: #15803d; }
+    .badge-orange { background: #ffedd5; color: #c2410c; }
+    .badge-red { background: #fee2e2; color: #b91c1c; }
+    .badge-gray { background: #f1f5f9; color: #475569; }
+    .member-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .member-btn {
+      display: block;
+      text-align: center;
+      padding: 18px 12px;
+      background: var(--card);
+      border: 2px solid var(--border);
+      border-radius: var(--radius);
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text);
+      text-decoration: none;
+      transition: all .15s;
+    }
+    .member-btn:active { transform: scale(.97); }
+    .member-btn:hover, .member-btn:focus {
+      border-color: var(--primary);
+      background: #eff6ff;
+      color: var(--primary);
+    }
+    .btn {
+      display: block;
+      width: 100%;
+      padding: 14px;
+      border: none;
+      border-radius: var(--radius);
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      text-align: center;
+      text-decoration: none;
+      transition: all .15s;
+    }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:active { background: var(--primary-dark); }
+    .btn-primary:disabled { background: #94a3b8; cursor: not-allowed; }
+    .btn-outline {
+      background: transparent;
+      border: 2px solid var(--border);
+      color: var(--muted);
+    }
+    .btn-sm { padding: 8px 14px; font-size: 13px; width: auto; display: inline-block; }
+    .task-input-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 8px;
+      align-items: center;
+    }
+    .task-input-row input[type="text"] {
+      flex: 1;
+      padding: 12px;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      font-size: 15px;
+      outline: none;
+    }
+    .task-input-row input[type="text"]:focus { border-color: var(--primary); }
+    .task-check {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 12px;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      margin-bottom: 8px;
+      cursor: pointer;
+    }
+    .task-check.checked { border-color: var(--success); background: #f0fdf4; }
+    .task-check input { width: 20px; height: 20px; margin-top: 2px; accent-color: var(--success); }
+    .task-check .content { flex: 1; font-size: 15px; }
+    .task-check .sub { font-size: 12px; color: var(--muted); margin-top: 4px; }
+    .remove-btn {
+      background: none;
+      border: none;
+      color: var(--danger);
+      font-size: 20px;
+      cursor: pointer;
+      padding: 0 4px;
+      line-height: 1;
+    }
+    .phase-bar {
+      background: linear-gradient(135deg, #2563eb, #7c3aed);
+      color: #fff;
+      border-radius: var(--radius);
+      padding: 16px;
+      margin-bottom: 12px;
+    }
+    .phase-bar .time { font-size: 13px; opacity: .85; }
+    .phase-bar .label { font-size: 18px; font-weight: 700; margin-top: 4px; }
+    .stat-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .stat-box {
+      background: var(--card);
+      border-radius: var(--radius);
+      padding: 12px 8px;
+      text-align: center;
+      box-shadow: var(--shadow);
+    }
+    .stat-box .num { font-size: 24px; font-weight: 700; color: var(--primary); }
+    .stat-box .lbl { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .stat-box.alert .num { color: var(--danger); }
+    .member-row {
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px;
+      margin-bottom: 8px;
+    }
+    .member-row.alert { border-color: #fca5a5; background: #fef2f2; }
+    .member-row .top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+    .member-row .name { font-weight: 600; font-size: 15px; }
+    .member-row .tags { display: flex; gap: 4px; flex-wrap: wrap; }
+    .member-row .tasks { font-size: 13px; color: var(--muted); }
+    .member-row .tasks li { margin-left: 16px; margin-top: 2px; }
+    .progress-bar {
+      height: 6px;
+      background: var(--border);
+      border-radius: 3px;
+      margin-top: 8px;
+      overflow: hidden;
+    }
+    .progress-bar .fill { height: 100%; background: var(--success); border-radius: 3px; }
+    .footer-link {
+      text-align: center;
+      margin-top: 20px;
+      font-size: 13px;
+    }
+    .footer-link a { color: var(--muted); }
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #1e293b;
+      color: #fff;
+      padding: 12px 24px;
+      border-radius: 24px;
+      font-size: 14px;
+      z-index: 999;
+      opacity: 0;
+      transition: opacity .3s;
+      pointer-events: none;
+    }
+    .toast.show { opacity: 1; }
+    .empty { text-align: center; color: var(--muted); padding: 24px; font-size: 14px; }
+    .nav-tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .nav-tabs a {
+      flex: 1;
+      text-align: center;
+      padding: 10px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      text-decoration: none;
+      color: var(--muted);
+      background: var(--card);
+    }
+    .nav-tabs a.active { background: var(--primary); color: #fff; }
+    .history-day { margin-bottom: 16px; }
+    .history-day .day-head {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--muted);
+      margin-bottom: 8px;
+      display: flex;
+      justify-content: space-between;
+    }
+    input[type="password"], input[type="text"].pin-input {
+      width: 100%;
+      padding: 14px;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius);
+      font-size: 18px;
+      text-align: center;
+      letter-spacing: 8px;
+      outline: none;
+    }
+    .error-msg { color: var(--danger); font-size: 14px; text-align: center; margin-top: 8px; }
+    .top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .top-bar a { color: var(--primary); text-decoration: none; }
+  </style>
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+  <div class="wrap">
+    {% block content %}{% endblock %}
+  </div>
+  <div class="toast" id="toast"></div>
+  <script>
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 2500);
+    }
+  </script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>
