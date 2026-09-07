@@ -1,130 +1,217 @@
 {% extends "base.html" %}
+{% from "icons.html" import icon_calendar, icon_list, icon_image, icon_plus, icon_logout, icon_check, icon_circle, icon_user %}
 {% block title %}{{ member_name }} — 团队日计划{% endblock %}
 {% block content %}
 <div class="date-hero">
-  <div class="date-label">今日</div>
-  <div class="date-value">{{ date_display }}</div>
+  <div class="date-icon">{{ icon_calendar(22) }}</div>
+  <div>
+    <div class="date-label">今日</div>
+    <div class="date-value">{{ date_display }}</div>
+  </div>
 </div>
+
+{% if daily_quote %}
+{% include "daily_quote.html" %}
+{% endif %}
 
 <div class="top-bar">
-  <span>{{ member_name }}</span>
-  <a href="{{ url_for('logout') }}">换一个人</a>
+  <span class="user">{{ icon_user(16) }} {{ member_name }}</span>
+  <a href="{{ url_for('logout') }}">{{ icon_logout(14) }} 切换</a>
 </div>
 
-<div class="phase-bar">
-  <div class="label">{{ phase_label }}</div>
-  {% if phase == 'planning' %}
-  <div class="time">填写完成后，{{ evening_time }} 再来更新完成情况</div>
-  {% else %}
-  <div class="time">请勾选今日每项任务的完成情况</div>
-  {% endif %}
-</div>
-
-{% if phase == 'planning' or (phase == 'evening' and not plan) or (phase == 'evening' and plan and not plan.evening_submitted_at) %}
 <div class="card">
-  <div class="card-title">📝 今日工作计划</div>
-  {% if phase == 'evening' and plan and not plan.evening_submitted_at %}
-  <p style="font-size:13px;color:var(--muted);margin-bottom:12px">如需修改计划，可调整后重新提交</p>
-  {% else %}
-  <p style="font-size:13px;color:var(--muted);margin-bottom:12px">添加今日要完成的工作任务，可填多条</p>
-  {% endif %}
+  <div class="card-title">
+    <span class="ico-wrap">{{ icon_list(18) }}</span>
+    工作计划
+  </div>
   <div id="task-list">
     {% if tasks %}
       {% for t in tasks %}
       <div class="task-input-row">
-        <input type="text" value="{{ t.content }}" placeholder="输入任务内容…">
-        <button type="button" class="remove-btn" onclick="this.parentElement.remove()">×</button>
+        <input type="text" value="{{ t.content }}" placeholder="任务内容">
+        <button type="button" class="remove-btn" onclick="this.parentElement.remove()" aria-label="删除">×</button>
       </div>
       {% endfor %}
     {% else %}
       <div class="task-input-row">
-        <input type="text" placeholder="输入任务内容…">
-        <button type="button" class="remove-btn" onclick="this.parentElement.remove()">×</button>
+        <input type="text" placeholder="任务内容">
+        <button type="button" class="remove-btn" onclick="this.parentElement.remove()" aria-label="删除">×</button>
       </div>
     {% endif %}
   </div>
-  <button type="button" class="btn btn-outline btn-sm" style="margin-bottom:12px" onclick="addTask()">+ 添加任务</button>
-  <button type="button" class="btn btn-primary" onclick="savePlan()">保存今日计划</button>
+  <button type="button" class="btn btn-outline btn-sm" style="margin-bottom:12px" onclick="addTask()">{{ icon_plus(16) }} 添加</button>
+  <button type="button" class="btn btn-primary" onclick="savePlan()">保存计划</button>
 </div>
-{% endif %}
 
-{% if phase == 'planning' and plan %}
+{% if plan %}
 <div class="card">
-  <div class="card-title">✅ 今日计划已保存</div>
-  <ul class="task-summary">
-    {% for t in tasks %}
-    <li>{{ t.content }}</li>
-    {% endfor %}
-  </ul>
-  <p style="font-size:13px;color:var(--muted);margin-top:12px">晚上 {{ evening_time }} 后回来更新完成情况</p>
-</div>
-{% endif %}
-
-{% if phase == 'evening' and plan %}
-<div class="card">
-  <div class="card-title">🌙 任务完成情况</div>
-  {% if plan.evening_submitted_at %}
-  <p style="font-size:13px;color:var(--success);margin-bottom:12px">✓ 今晚完成情况已提交</p>
-  {% else %}
-  <p style="font-size:13px;color:var(--muted);margin-bottom:12px">勾选已完成的任务</p>
-  {% endif %}
+  <div class="card-title">
+    <span class="ico-wrap">{{ icon_check(18) }}</span>
+    进度更新
+  </div>
   <div id="check-list">
     {% for t in tasks %}
-    <label class="task-check {% if t.evening_done %}checked{% endif %}" data-id="{{ t.id }}">
-      <input type="checkbox" {% if t.evening_done %}checked{% endif %}
-        {% if plan.evening_submitted_at %}disabled{% endif %}
-        onchange="this.closest('.task-check').classList.toggle('checked', this.checked)">
-      <div class="content">{{ t.content }}</div>
-    </label>
+    <div class="task-update-block {% if t.updated_at %}is-done{% endif %}" data-id="{{ t.id }}" id="task-block-{{ t.id }}">
+      <div class="task-head">
+        <label class="task-check {% if t.evening_done %}checked{% endif %}">
+          <input type="checkbox" id="check-{{ t.id }}" {% if t.evening_done %}checked{% endif %}
+            onchange="this.closest('.task-check').classList.toggle('checked', this.checked)">
+          <div class="content">{{ t.content }}</div>
+        </label>
+        <span class="status-dot {% if t.updated_at %}done{% else %}pending{% endif %}" id="dot-{{ t.id }}"></span>
+      </div>
+
+      <div class="paste-zone" data-task-id="{{ t.id }}" tabindex="0">
+        <div class="paste-inner">
+          {{ icon_image(24) }}
+          <span>点击粘贴截图</span>
+        </div>
+        <textarea class="paste-catcher" aria-hidden="true"></textarea>
+        <button type="button" class="album-btn" onclick="event.stopPropagation(); pickAlbum({{ t.id }})">相册</button>
+        <input type="file" id="album-{{ t.id }}" accept="image/*" multiple hidden onchange="onAlbumPick(this, {{ t.id }})">
+      </div>
+
+      <div class="attach-preview" id="attach-preview-{{ t.id }}">
+        {% for a in t.attachments %}
+        <div class="attach-item">
+          <a href="{{ url_for('serve_upload', filename=a.stored_name) }}" target="_blank">
+            <img src="{{ url_for('serve_upload', filename=a.stored_name) }}" alt="">
+          </a>
+          <button type="button" class="attach-del" onclick="deleteAttach({{ a.id }}, this)">×</button>
+        </div>
+        {% endfor %}
+      </div>
+      <div class="new-preview" id="new-preview-{{ t.id }}"></div>
+      <button type="button" class="btn btn-primary btn-task" id="btn-{{ t.id }}" onclick="submitTask({{ t.id }})">提交</button>
+    </div>
     {% endfor %}
   </div>
-  {% if not plan.evening_submitted_at %}
-  <button type="button" class="btn btn-primary" style="margin-top:12px" onclick="submitCheckin()">提交完成情况</button>
-  {% endif %}
 </div>
 {% endif %}
 {% endblock %}
 
+{% block extra_head %}
+<style>
+  .task-update-block {
+    border: 1px solid var(--border); border-radius: var(--radius-sm);
+    padding: 14px; margin-bottom: 12px; background: #fafbfc;
+  }
+  .task-update-block.is-done { border-color: #a7f3d0; background: var(--success-bg); }
+  .task-head { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 12px; }
+  .paste-zone {
+    position: relative; padding: 20px 12px; border: 1.5px dashed #cbd5e1;
+    border-radius: var(--radius-sm); background: #fff; text-align: center;
+    cursor: pointer; transition: all .15s; outline: none;
+  }
+  .paste-zone:hover, .paste-zone.active { border-color: var(--accent); background: var(--primary-light); }
+  .paste-inner { display: flex; flex-direction: column; align-items: center; gap: 6px; color: var(--muted); font-size: 13px; font-weight: 500; }
+  .paste-inner .ico { color: var(--accent); }
+  .paste-catcher { position: absolute; opacity: 0; width: 1px; height: 1px; pointer-events: none; }
+  .album-btn {
+    margin-top: 10px; padding: 4px 12px; border: none; background: none;
+    color: var(--muted); font-size: 12px; cursor: pointer; text-decoration: underline;
+  }
+  .attach-preview, .new-preview { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+  .attach-item, .pending-item { position: relative; width: 68px; height: 68px; }
+  .attach-item img, .pending-item img { width: 68px; height: 68px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border); }
+  .attach-del, .pending-del {
+    position: absolute; top: -5px; right: -5px; width: 20px; height: 20px;
+    border: none; border-radius: 50%; background: var(--danger); color: #fff;
+    font-size: 13px; line-height: 1; cursor: pointer;
+  }
+  .btn-task { margin-top: 12px; padding: 11px; font-size: 14px; }
+</style>
+{% endblock %}
+
 {% block scripts %}
 <script>
+const pendingFiles = {};
+let activeTaskId = null, activeZone = null;
+
 function addTask() {
   const div = document.createElement('div');
   div.className = 'task-input-row';
-  div.innerHTML = '<input type="text" placeholder="输入任务内容…"><button type="button" class="remove-btn" onclick="this.parentElement.remove()">×</button>';
+  div.innerHTML = '<input type="text" placeholder="任务内容"><button type="button" class="remove-btn" onclick="this.parentElement.remove()">×</button>';
   document.getElementById('task-list').appendChild(div);
   div.querySelector('input').focus();
 }
 
 async function savePlan() {
-  const list = document.getElementById('task-list');
-  if (!list) return;
-  const inputs = list.querySelectorAll('input');
-  const tasks = Array.from(inputs).map(i => i.value.trim()).filter(Boolean);
+  const tasks = Array.from(document.querySelectorAll('#task-list input')).map(i => i.value.trim()).filter(Boolean);
   if (!tasks.length) { showToast('请至少填写一条任务'); return; }
-  const res = await fetch('/api/plan', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({tasks})
-  });
+  if (!confirm('保存计划会重置今日进度，确定吗？')) return;
+  const res = await fetch('/api/plan', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({tasks}) });
   const data = await res.json();
-  if (data.ok) { showToast('计划已保存'); setTimeout(() => location.reload(), 800); }
+  if (data.ok) { showToast('已保存'); setTimeout(() => location.reload(), 700); }
   else showToast(data.error || '保存失败');
 }
 
-async function submitCheckin() {
-  const checks = document.querySelectorAll('#check-list .task-check');
-  const tasks = {};
-  checks.forEach(el => {
-    tasks[el.dataset.id] = el.querySelector('input').checked;
-  });
-  const res = await fetch('/api/checkin', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({tasks})
-  });
-  const data = await res.json();
-  if (data.ok) { showToast('完成情况已提交'); setTimeout(() => location.reload(), 800); }
-  else showToast(data.error || '提交失败');
+function activateZone(zone) {
+  if (activeZone) activeZone.classList.remove('active');
+  activeZone = zone; activeTaskId = zone.dataset.taskId;
+  zone.classList.add('active');
+  zone.querySelector('.paste-catcher')?.focus();
 }
+
+function addImages(taskId, files) {
+  const images = Array.from(files).filter(f => f?.type?.startsWith('image/'));
+  if (!images.length) return;
+  if (!pendingFiles[taskId]) pendingFiles[taskId] = [];
+  images.forEach((f, i) => {
+    const file = f.name ? f : new File([f], `shot_${Date.now()}_${i}.png`, {type: f.type || 'image/png'});
+    const idx = pendingFiles[taskId].length;
+    pendingFiles[taskId].push(file);
+    const box = document.getElementById('new-preview-' + taskId);
+    const wrap = document.createElement('div');
+    wrap.className = 'pending-item';
+    wrap.innerHTML = `<img src="${URL.createObjectURL(file)}"><button type="button" class="pending-del">×</button>`;
+    wrap.querySelector('.pending-del').onclick = () => { pendingFiles[taskId][idx] = null; wrap.remove(); };
+    box.appendChild(wrap);
+  });
+  showToast('已添加截图');
+}
+
+function pickAlbum(id) { document.getElementById('album-' + id).click(); }
+function onAlbumPick(input, id) { addImages(id, input.files); input.value = ''; }
+
+function handlePaste(e) {
+  const items = e.clipboardData?.items;
+  if (!items) return;
+  let file = null;
+  for (const item of items) { if (item.type.startsWith('image/')) { file = item.getAsFile(); break; } }
+  if (!file) return;
+  if (!activeTaskId) { const z = document.querySelector('.paste-zone'); if (z) activateZone(z); }
+  if (!activeTaskId) return;
+  e.preventDefault(); e.stopPropagation();
+  addImages(activeTaskId, [file]);
+}
+
+async function deleteAttach(id, btn) {
+  if (!confirm('删除截图？')) return;
+  const res = await fetch('/api/attachment/' + id, {method:'DELETE'});
+  if ((await res.json()).ok) btn.closest('.attach-item').remove();
+}
+
+async function submitTask(taskId) {
+  const btn = document.getElementById('btn-' + taskId);
+  const form = new FormData();
+  form.append('done', document.getElementById('check-' + taskId).checked ? '1' : '0');
+  pendingFiles[taskId]?.filter(Boolean).forEach(f => form.append('files', f));
+  btn.disabled = true;
+  const res = await fetch('/api/task/' + taskId + '/submit', { method: 'POST', body: form });
+  const data = await res.json();
+  btn.disabled = false;
+  if (!data.ok) { showToast(data.error || '提交失败'); return; }
+  showToast('已提交');
+  setTimeout(() => location.reload(), 600);
+}
+
+document.querySelectorAll('.paste-zone').forEach(zone => {
+  zone.addEventListener('click', () => activateZone(zone));
+  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('active'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('active'));
+  zone.addEventListener('drop', e => { e.preventDefault(); activateZone(zone); addImages(zone.dataset.taskId, e.dataTransfer.files); });
+});
+document.addEventListener('paste', handlePaste, true);
 </script>
 {% endblock %}

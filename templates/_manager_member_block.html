@@ -1,0 +1,45 @@
+{% from "icons.html" import icon_check, icon_circle, icon_user %}
+{% macro member_block(s) %}
+<div class="member-row">
+  <div class="top">
+    <span class="name"><span class="name-ico">{{ icon_user(16) }}</span>{{ s.member_name }}</span>
+    <div class="meta">
+      {% if s.evening_rate is not none %}
+      <span class="rate">{{ s.evening_rate }}%</span>
+      {% endif %}
+      <span class="status-dot {% if s.updated %}done{% else %}pending{% endif %}"></span>
+    </div>
+  </div>
+  {% if s.tasks %}
+  <ul class="tasks">
+    {% for t in s.tasks %}
+    <li class="task-line">
+      <div class="task-line-main">
+        {% if t.evening_done %}
+          <span class="ico done">{{ icon_check(16) }}</span>
+        {% else %}
+          <span class="ico pending">{{ icon_circle(16) }}</span>
+        {% endif %}
+        <span>{{ t.content }}</span>
+        {% if t.updated_at %}
+          <span class="task-time-mini">{{ t.updated_at[11:16] }}</span>
+        {% endif %}
+      </div>
+      {% if t.attachments %}
+      <div class="attach-row">
+        {% for a in t.attachments %}
+        <a href="{{ url_for('serve_upload', filename=a.stored_name) }}" target="_blank">
+          <img src="{{ url_for('serve_upload', filename=a.stored_name) }}" alt="">
+        </a>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+  {% if s.evening_rate is not none %}
+  <div class="progress-bar"><div class="fill" style="width:{{ s.evening_rate }}%"></div></div>
+  {% endif %}
+  {% endif %}
+</div>
+{% endmacro %}

@@ -1,0 +1,54 @@
+团队日计划 — 永久访问地址（3 步完成）
+================================
+
+说明：域名无法代你「申请购买」（需本人注册并付款）。
+长期免费方案：Render 提供固定 HTTPS 地址，格式如下，可一直使用：
+
+  https://team-daily-planner.onrender.com
+  （部署完成后以 Render 控制台显示为准）
+
+────────────────────────────────
+第 1 步：创建免费数据库（约 2 分钟）
+────────────────────────────────
+1. 打开 https://console.neon.tech/signup （GitHub 登录）
+2. 新建项目 → 复制 Connection String
+   格式：postgresql://user:pass@ep-xxx.neon.tech/neondb?sslmode=require
+
+────────────────────────────────
+第 2 步：一键部署到 Render（约 5 分钟）
+────────────────────────────────
+1. 打开（已推送最新代码）：
+   https://render.com/deploy?repo=https://github.com/q804833087-ctrl/team-daily-planner
+
+2. GitHub 登录 → 点 Apply / Create Blueprint
+
+3. 部署页面找到 Environment Variables，添加：
+   DATABASE_URL = （粘贴第 1 步 Neon 连接串）
+
+4. 等待 Deploy 完成，复制页面上的网址，例如：
+   https://team-daily-planner-xxxx.onrender.com
+
+────────────────────────────────
+第 3 步：发给组员
+────────────────────────────────
+· 把 Render 网址发到微信群，让大家收藏
+· 管理者入口在首页底部，PIN 默认：8888
+· 首次打开若较慢（约 30 秒），是免费版休眠唤醒，属正常
+
+────────────────────────────────
+可选：绑定自己的域名（需购买）
+────────────────────────────────
+若想要 rijihua.xxx.com 这类自定义域名：
+1. 在阿里云 / 腾讯云 / Cloudflare 购买域名（约 30~80 元/年）
+2. Render 控制台 → 该服务 → Settings → Custom Domains → 添加域名
+3. 按 Render 提示在域名 DNS 添加 CNAME 记录
+
+────────────────────────────────
+注意
+────────────────────────────────
+· 必须配置 DATABASE_URL，否则云端数据会在重启后丢失
+· 截图附件存在 Render 临时磁盘，重新部署可能清空；计划与进度数据在 Neon 中永久保存
+· 本地临时链接（需电脑开机）已弃用，请只用 Render 地址
+
+管理者 PIN：8888
+团队名称：在 config.json 修改 team_name 后 git push 自动更新

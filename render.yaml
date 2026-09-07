@@ -1,14 +1,17 @@
-# 简化版 Render 部署（单 Web 服务，无需数据库配置）
-services:
-  - type: web
-    name: team-daily-planner
-    runtime: python
-    plan: free
-    buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT --workers 1 --timeout 120
-    healthCheckPath: /health
-    envVars:
-      - key: PYTHON_VERSION
-        value: "3.12.0"
-      - key: SECRET_KEY
-        generateValue: true
+# 团队日计划 — Render 永久部署
+services:
+  - type: web
+    name: team-daily-planner
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT --workers 1 --timeout 120
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.0"
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        sync: false
+

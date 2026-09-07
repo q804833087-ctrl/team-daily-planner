@@ -1,89 +1,91 @@
 {% extends "base.html" %}
+{% from "icons.html" import icon_chart, icon_logout, icon_calendar %}
+{% from "_manager_member_block.html" import member_block %}
 {% block title %}管理者看板{% endblock %}
 {% block content %}
-<div class="top-bar">
+<div class="page-brand">
+  {{ icon_chart(22) }}
   <span>管理者看板</span>
-  <a href="{{ url_for('logout') }}">退出</a>
 </div>
 
-<div class="date-hero compact">
-  <div class="date-label">今日</div>
-  <div class="date-value">{{ date_display }}</div>
+<div class="top-bar">
+  <span style="display:flex;align-items:center;gap:6px;font-weight:600">{{ icon_calendar(16) }} 每日统计</span>
+  <a href="{{ url_for('logout') }}">{{ icon_logout(14) }} 退出</a>
 </div>
 
-<div class="phase-bar">
-  <div class="label">{{ cfg.team_name }}</div>
-  <div class="time">{{ phase_label }}</div>
-</div>
-
-<div class="nav-tabs">
-  <a href="{{ url_for('manager_dashboard') }}" class="active">今日概览</a>
-  <a href="{{ url_for('manager_history') }}">历史记录</a>
-</div>
-
-<div class="stat-row two-col">
-  <div class="stat-box">
-    <div class="num">{{ submitted }}</div>
-    <div class="lbl">已填计划</div>
-  </div>
-  <div class="stat-box {% if submitted > 0 and evening_ok < submitted %}alert{% endif %}">
-    <div class="num">{{ evening_ok }}/{{ submitted }}</div>
-    <div class="lbl">晚间已更新</div>
+<div class="card filter-card">
+  <div class="filter-row">
+    <a href="{{ url_for('manager_dashboard', days=7) }}" class="filter-btn {% if days == 7 and not selected_date %}active{% endif %}">近7天</a>
+    <a href="{{ url_for('manager_dashboard', days=14) }}" class="filter-btn {% if days == 14 and not selected_date %}active{% endif %}">近14天</a>
+    <a href="{{ url_for('manager_dashboard', days=30) }}" class="filter-btn {% if days == 30 and not selected_date %}active{% endif %}">近30天</a>
   </div>
 </div>
 
-{% if alerts %}
-<div class="card" style="border:1.5px solid #fca5a5;background:#fef2f2">
-  <div class="card-title" style="color:var(--danger)">⚠️ 待跟进（{{ alerts|length }} 人）</div>
-  {% for s in alerts %}
-  <div style="font-size:14px;margin-bottom:4px">
-    <strong>{{ s.member_name }}</strong> —
-    {% if not s.has_plan %}未填计划
-    {% elif s.missing == 'evening' %}未更新完成情况
-    {% endif %}
-  </div>
-  {% endfor %}
-</div>
-{% endif %}
-
-<div class="card">
-  <div class="card-title">今日全员明细</div>
-  {% if statuses %}
-  {% for s in statuses %}
-  <div class="member-row {% if s.alert %}alert{% endif %}">
-    <div class="top">
-      <span class="name">{{ s.member_name }}</span>
-      <div class="tags">
-        {% if s.has_plan %}
-          <span class="badge badge-green">计划✓</span>
-        {% else %}
-          <span class="badge badge-red">未填</span>
-        {% endif %}
-        {% if s.evening_done %}
-          <span class="badge badge-green">完成✓</span>
-        {% elif s.has_plan and phase == 'evening' %}
-          <span class="badge badge-gray">待更新</span>
-        {% endif %}
-      </div>
+{% if daily_reports %}
+{% for day in daily_reports %}
+<section class="day-section {% if day.is_today %}day-today{% endif %}" id="day-{{ day.date }}">
+  <div class="day-header">
+    <div class="day-title">
+      {{ day.date_display }}
+      {% if day.is_today %}<span class="badge badge-blue">今天</span>{% endif %}
     </div>
-    {% if s.tasks %}
-    <ul class="tasks">
-      {% for t in s.tasks %}
-      <li>
-        {{ t.content }}
-        {% if t.evening_done %}<span style="color:var(--success)">[已完成]</span>{% else %}<span style="color:var(--muted)">[未完成]</span>{% endif %}
-      </li>
+    <div class="day-meta">
+      <span>{{ day.submitted }} 人</span>
+      <span class="sep">·</span>
+      <span>{{ day.updated_ok }}/{{ day.submitted }} 已更新</span>
+      <span class="sep">·</span>
+      <span>{{ day.avg_rate }}%</span>
+    </div>
+  </div>
+
+  <div class="stat-row">
+    <div class="stat-box">
+      <div class="num">{{ day.submitted }}</div>
+      <div class="lbl">已填计划</div>
+    </div>
+    <div class="stat-box {% if day.submitted > 0 and day.updated_ok < day.submitted %}warn{% endif %}">
+      <div class="num">{{ day.updated_ok }}/{{ day.submitted }}</div>
+      <div class="lbl">已更新</div>
+    </div>
+  </div>
+
+  <div class="card day-card">
+    {% if day.statuses %}
+      {% for s in day.statuses %}
+        {{ member_block(s) }}
       {% endfor %}
-    </ul>
-    {% if s.evening_rate is not none %}
-    <div style="font-size:12px;color:var(--muted);margin-top:6px">完成率 {{ s.evening_rate }}%</div>
-    <div class="progress-bar"><div class="fill" style="width:{{ s.evening_rate }}%"></div></div>
-    {% endif %}
+    {% else %}
+      <div class="empty">暂无数据</div>
     {% endif %}
   </div>
-  {% endfor %}
-  {% else %}
-  <div class="empty">今日暂无人填写计划</div>
-  {% endif %}
-</div>
+</section>
+{% endfor %}
+{% else %}
+<div class="card"><div class="empty">暂无数据</div></div>
+{% endif %}
+{% endblock %}
+
+{% block extra_head %}
+<style>
+  .filter-card { padding: 14px 16px; }
+  .day-section { margin-bottom: 24px; }
+  .day-section.day-today .day-header { border-color: #93c5fd; background: var(--primary-light); }
+  .day-header {
+    border: 1px solid var(--border); border-radius: var(--radius-sm);
+    padding: 14px 16px; margin-bottom: 10px; background: var(--card);
+  }
+  .day-title { font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+  .day-meta { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); margin-top: 6px; }
+  .day-meta .sep { opacity: .4; }
+  .day-card { margin-bottom: 0; padding: 12px; }
+  .task-line { margin-bottom: 10px; list-style: none; }
+  .task-line-main { display: flex; align-items: flex-start; gap: 8px; font-size: 14px; line-height: 1.5; }
+  .task-line-main .ico { margin-top: 2px; flex-shrink: 0; }
+  .task-line-main .ico.done { color: var(--success); }
+  .task-line-main .ico.pending { color: #cbd5e1; }
+  .task-time-mini { font-size: 11px; color: var(--muted); margin-left: auto; white-space: nowrap; }
+  .attach-row { display: flex; gap: 6px; margin-top: 6px; margin-left: 26px; flex-wrap: wrap; }
+  .attach-row img { width: 56px; height: 56px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border); }
+  .member-row .tasks { padding-left: 0; margin: 0; }
+</style>
 {% endblock %}

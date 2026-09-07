@@ -131,7 +131,19 @@ def init_schema(conn):
                 content TEXT NOT NULL,
                 sort_order INTEGER NOT NULL DEFAULT 0,
                 noon_done INTEGER NOT NULL DEFAULT 0,
-                evening_done INTEGER NOT NULL DEFAULT 0
+                evening_done INTEGER NOT NULL DEFAULT 0,
+                updated_at TEXT
+            )
+            """
+        )
+        db.run(
+            """
+            CREATE TABLE IF NOT EXISTS task_attachments (
+                id SERIAL PRIMARY KEY,
+                task_id INTEGER NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+                stored_name TEXT NOT NULL,
+                original_name TEXT NOT NULL,
+                created_at TEXT NOT NULL
             )
             """
         )
@@ -158,7 +170,20 @@ def init_schema(conn):
                 sort_order INTEGER NOT NULL DEFAULT 0,
                 noon_done INTEGER NOT NULL DEFAULT 0,
                 evening_done INTEGER NOT NULL DEFAULT 0,
+                updated_at TEXT,
                 FOREIGN KEY (plan_id) REFERENCES daily_plans(id) ON DELETE CASCADE
+            )
+            """
+        )
+        db.run(
+            """
+            CREATE TABLE IF NOT EXISTS task_attachments (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                task_id INTEGER NOT NULL,
+                stored_name TEXT NOT NULL,
+                original_name TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE
             )
             """
         )
