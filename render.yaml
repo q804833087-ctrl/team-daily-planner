@@ -1,4 +1,4 @@
-# Render Blueprint — 一键部署（含免费数据库）
+# 简化版 Render 部署（单 Web 服务，无需数据库配置）
 services:
   - type: web
     name: team-daily-planner
@@ -12,13 +12,3 @@ services:
         value: "3.12.0"
       - key: SECRET_KEY
         generateValue: true
-      - key: DATABASE_URL
-        fromDatabase:
-          name: team-daily-db
-          property: connectionString
-
-databases:
-  - name: team-daily-db
-    plan: free
-    databaseName: team_daily
-    user: team_daily
